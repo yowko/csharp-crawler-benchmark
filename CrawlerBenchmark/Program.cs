@@ -29,12 +29,23 @@ public class Crawler
 
     const string TargetUrl = "https://tw.stock.yahoo.com/class-quote?sectorId=26&exchange=TAI";
     //HtmlDocument htmlDocument = new HtmlDocument();
-    private HtmlDocument htmlAgilityPackHtml = new HtmlDocument();
-    private HtmlNode scrapySharpHtml = new HtmlNode(HtmlNodeType.Element, new HtmlDocument(), 0);
-    private IDocument angleSharpDocument = null;
-    private IPage puppeteerSharpPage = null;
-    private ChromeDriver seleniumDriver = null;
+    private HtmlDocument htmlAgilityPackHtml = default;
+    private HtmlWeb htmlAgilityPackHtmlWeb = default;
+    
+    private HtmlNode scrapySharpHtml =default;
+    private ScrapingBrowser scrapySharpbrowser = default;
+    
+    private IDocument angleSharpDocument = default;
+    private IPage puppeteerSharpPage = default;
+    private ChromeDriver seleniumDriver = default;
     private Microsoft.Playwright.IPage playwrightPage = null;
+    private string htmlDocument = string.Empty;
+    private const bool ShowDebug = false;
+
+    
+    private const bool UseHtmlString = true;
+    //[Params(true, false)]
+    //public bool UseHtmlString { get; set; }
     
     
     [GlobalSetup]
@@ -43,85 +54,108 @@ public class Crawler
         //下載瀏覽器，若已下載過則不會再次下載
         await new BrowserFetcher().DownloadAsync();
         //PuppeteerSharp.Helpers.TaskHelper.DefaultTimeout = 5_000;
-        HttpClient client = new HttpClient();
-        var html = await client.GetStringAsync(TargetUrl);
-        // htmlDocument.LoadHtml(html);
-        
-        var web = new HtmlWeb();
-        // 以 yahoo 股票並選擇 ETF 為例
-        htmlAgilityPackHtml.LoadHtml(html);
-        //htmlAgilityPackHtml = web.Load(TargetUrl);
-        
-        // 建立瀏覽器物件
-        ScrapingBrowser mybrowser = new ScrapingBrowser();
-
-        // 以 yahoo 股票並選擇 ETF 為例
-        WebPage webpage =
-            mybrowser.NavigateToPage(new Uri(TargetUrl));
-        scrapySharpHtml = htmlAgilityPackHtml.DocumentNode;
-            //webpage.Html;
-        
-        
-        var config = Configuration.Default.WithDefaultLoader();
-        angleSharpDocument = await BrowsingContext.New(config).OpenAsync(req => req.Content(html));
-            //await BrowsingContext.New(config).OpenAsync(TargetUrl);
-        
-        
-        //使用 headless 模式 (不顯示瀏覽器) 啟動瀏覽器
-        var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+        if (UseHtmlString)
         {
-            Headless = true,
-            Timeout = 0,
-            Args = new[] { "--disable-features=site-per-process", "--no-sandbox" }
-        });
-        TaskHelper.DefaultTimeout = 5_000;
-        puppeteerSharpPage = await browser.NewPageAsync();
-        //await puppeteerSharpPage.GoToAsync(TargetUrl, new NavigationOptions() { Timeout = 0 });
-        await puppeteerSharpPage.SetContentAsync(html);
-        // if(puppeteerSharpPage is null)
-        // {
-        //     await puppeteerSharpPage.SetContentAsync(html);
-        // }
-        
-        var options = new ChromeOptions();
-        //使用 headless 模式
-        options.AddArguments(new List<string>()
-        {
-            "headless",
-            "disable-gpu",
-            "--remote-debugging-pipe"
-        });
-        //options.PageLoadTimeout = TimeSpan.MaxValue;
-        //使用 ChromeDriver
-        seleniumDriver = new ChromeDriver(options);
-        //seleniumDriver.Navigate().GoToUrl(TargetUrl);
-        seleniumDriver.Navigate().GoToUrl("data:text/html;charset=utf-8," + html);
-            //.get("data:text/html;charset=utf-8," + html_content)
-        
-        
-        // Install Playwright
-        var exitCode = Microsoft.Playwright.Program.Main(new[] { "install" });
-        if (exitCode != 0)
-        {
-            throw new Exception($"Playwright exited with code {exitCode}");
+            HttpClient client = new HttpClient();
+            htmlDocument = await client.GetStringAsync(TargetUrl);
+            
+            // var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
+            // var playwrightBrowser = await playwright.Chromium.LaunchAsync();
+            // playwrightPage = await playwrightBrowser.NewPageAsync();
         }
-
-        // Run the Playwright test
-        var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
-        var playwrightBrowser = await playwright.Chromium.LaunchAsync();
-        playwrightPage = await playwrightBrowser.NewPageAsync();
-        await playwrightPage.GotoAsync(TargetUrl,new PageGotoOptions(){Timeout = 0});
-        Console.WriteLine("global setup");
-        if (playwrightPage is null)
-        {
-            await playwrightPage.SetContentAsync(html);
-        } 
+        // else
+        // {
+            // htmlDocument.LoadHtml(html);
+            htmlAgilityPackHtml = new HtmlDocument();
+            htmlAgilityPackHtmlWeb = new HtmlWeb();
+            // 以 yahoo 股票並選擇 ETF 為例
+            //htmlAgilityPackHtml.LoadHtml(html);
+            //htmlAgilityPackHtml = web.Load(TargetUrl);
+            
+            //
+            // // 建立瀏覽器物件
+            scrapySharpbrowser = new ScrapingBrowser();
+            //
+            // // 以 yahoo 股票並選擇 ETF 為例
+            // WebPage webpage =
+            //     mybrowser.NavigateToPage(new Uri(TargetUrl));
+            // scrapySharpHtml = htmlAgilityPackHtml.DocumentNode;
+            //     //webpage.Html;
+            //
+            //
+            // var config = Configuration.Default.WithDefaultLoader();
+            // angleSharpDocument = await BrowsingContext.New(config).OpenAsync(req => req.Content(html));
+            //     //await BrowsingContext.New(config).OpenAsync(TargetUrl);
+            //
+            //
+            
+            var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+            {
+                Headless = true,
+                Timeout = 0,
+                Args = new[] { "--disable-features=site-per-process", "--no-sandbox" }
+            });
+            TaskHelper.DefaultTimeout = 5_000;
+            puppeteerSharpPage = await browser.NewPageAsync();
+            
+            // //使用 headless 模式 (不顯示瀏覽器) 啟動瀏覽器
+            // var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+            // {
+            //     Headless = true,
+            //     Timeout = 0,
+            //     Args = new[] { "--disable-features=site-per-process", "--no-sandbox" }
+            // });
+            // TaskHelper.DefaultTimeout = 5_000;
+            // puppeteerSharpPage = await browser.NewPageAsync();
+            // //await puppeteerSharpPage.GoToAsync(TargetUrl, new NavigationOptions() { Timeout = 0 });
+            // await puppeteerSharpPage.SetContentAsync(html);
+            // // if(puppeteerSharpPage is null)
+            // // {
+            // //     await puppeteerSharpPage.SetContentAsync(html);
+            // // }
+            //
+            var options = new ChromeOptions();
+            //使用 headless 模式
+            options.AddArguments(new List<string>()
+            {
+                "headless",
+                "disable-gpu",
+                "--remote-debugging-pipe",
+                "no-sandbox"
+            });
+            options.PageLoadTimeout = TimeSpan.MaxValue;
+            //使用 ChromeDriver
+            seleniumDriver = new ChromeDriver(ChromeDriverService.CreateDefaultService(), options,TimeSpan.FromMinutes(3));
+            //seleniumDriver.Manage().Timeouts().PageLoad.Add(TimeSpan.FromSeconds(30));
+            // //seleniumDriver.Navigate().GoToUrl(TargetUrl);
+            // seleniumDriver.Navigate().GoToUrl("data:text/html;charset=utf-8," + html);
+            //     //.get("data:text/html;charset=utf-8," + html_content)
+            //
+            //
+            // Install Playwright
+            var exitCode = Microsoft.Playwright.Program.Main(new[] { "install" });
+            if (exitCode != 0)
+            {
+                throw new Exception($"Playwright exited with code {exitCode}");
+            }
+            
+            // Run the Playwright test
+            var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
+            var playwrightBrowser = await playwright.Chromium.LaunchAsync();
+            playwrightPage = await playwrightBrowser.NewPageAsync();
+            // await playwrightPage.GotoAsync(TargetUrl,new PageGotoOptions(){Timeout = 0});
+            // Console.WriteLine("global setup");
+            // if (playwrightPage is null)
+            // {
+            //     await playwrightPage.SetContentAsync(html);
+            // } 
+        //}
     }
+    
     [Benchmark]
-    [Arguments("HtmlAgilityPackCssSelectorsNetCore")]
-    [Arguments("FizzlerSystemsHtmlAgilityPack")]
-    public Task HtmlAgilityPack(string haPtype)
+    public Task HtmlAgilityPackCssSelectorsNetCore()
     {
+        // var html = new HtmlDocument();
         // // 定義一個委派變數
         // HapMethod? methodToExecute = null;
         //
@@ -140,21 +174,31 @@ public class Crawler
         // var web = new HtmlWeb();
         // // 以 yahoo 股票並選擇 ETF 為例
         // var html = web.Load(TargetUrl);
+        
         var html = htmlAgilityPackHtml;
+
+        if (UseHtmlString)
+        {
+            html.LoadHtml(htmlDocument);
+        }
+        else
+        {
+            html = htmlAgilityPackHtmlWeb.Load(TargetUrl);
+        }
+
         var nodes = Enumerable.Empty<HtmlNode>();
 
         //使用 HtmlAgilityPack 取得 html node
         //var nodes = HtmlAgilityPack_CssSelectors_NetCore(html);
         //使用 Fizzler 取得 html node
         //var nodes = Fizzler_Systems_HtmlAgilityPack(html);
-        if (haPtype == "HtmlAgilityPackCssSelectorsNetCore")
-        {
+       
             nodes = HtmlAgilityPackCssSelectorsNetCore(html);
-        }
-        else if (haPtype == "FizzlerSystemsHtmlAgilityPack")
-        {
-            nodes = FizzlerSystemsHtmlAgilityPack(html);
-        }
+        // }
+        // else if (haPtype == "FizzlerSystemsHtmlAgilityPack")
+        // {
+        //     nodes = FizzlerSystemsHtmlAgilityPack(html);
+        // }
 
         //將 html node 轉換成 Stock 物件
         var stocks = nodes!.Select(a => new Stock
@@ -174,10 +218,14 @@ public class Crawler
             UpDown = a.SelectSingleNode("./div/div[3]/span").Attributes["class"].Value
             //UpDownCheck(a.SelectSingleNode("./div/div[3]/span").Attributes["class"].Value) //處理上漲或下跌的顯示
         });
-        // foreach(var stock in stocks) 
-        // {
-        //      Console.WriteLine($"股票名稱: {stock.Name.PadRight(12)}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price.PadRight(5)}\t 漲跌: {stock.UpDown} {stock.PriceChange,-8}\t 漲跌幅: {stock.UpDown} {stock.Change,-8}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
-        // } 
+        if (ShowDebug)
+        {
+            foreach (var stock in stocks)
+            {
+                Console.WriteLine(
+                    $"股票名稱: {stock.Name,-12}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price,-5}\t 漲跌: {stock.UpDown} {stock.PriceChange,-8}\t 漲跌幅: {stock.UpDown} {stock.Change,-8}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
+            }
+        }
 
         //Task.CompletedTask.Wait();
         return Task.CompletedTask;
@@ -197,19 +245,225 @@ public class Crawler
             //return Fizzler.Systems.HtmlAgilityPack.HtmlNodeSelection.QuerySelectorAll(htmlDocument.DocumentNode,"li[class='List(n)']");
         }
     }
+    
+    [Benchmark]
+    public Task FizzlerSystemsHtmlAgilityPack()
+    {
+        // // 定義一個委派變數
+        // HapMethod? methodToExecute = null;
+        //
+        // // 根據傳入的值指派不同的方法給委派變數
+        // if (haPtype == "HtmlAgilityPack_CssSelectors_NetCore")
+        // {
+        //     methodToExecute = HtmlAgilityPackCssSelectorsNetCore;
+        // }
+        // else if (haPtype == "Fizzler_Systems_HtmlAgilityPack")
+        // {
+        //     methodToExecute = FizzlerSystemsHtmlAgilityPack;
+        // }
+        // var nodes = methodToExecute?.Invoke(html);
+
+
+        // var web = new HtmlWeb();
+        // // 以 yahoo 股票並選擇 ETF 為例
+        // var html = web.Load(TargetUrl);
+        
+        var html = htmlAgilityPackHtml;
+        
+       
+        if (UseHtmlString)
+        {
+            html.LoadHtml(htmlDocument);
+        }
+        else
+        {
+            html = htmlAgilityPackHtmlWeb.Load(TargetUrl);
+        }
+
+        var nodes = Enumerable.Empty<HtmlNode>();
+
+        //使用 HtmlAgilityPack 取得 html node
+        //var nodes = HtmlAgilityPack_CssSelectors_NetCore(html);
+        //使用 Fizzler 取得 html node
+        //var nodes = Fizzler_Systems_HtmlAgilityPack(html);
+       
+            nodes = FizzlerSystemsHtmlAgilityPack(html);
+        // }
+        // else if (haPtype == "FizzlerSystemsHtmlAgilityPack")
+        // {
+        //     nodes = FizzlerSystemsHtmlAgilityPack(html);
+        // }
+
+        //將 html node 轉換成 Stock 物件
+        var stocks = nodes!.Select(a => new Stock
+        {
+            //以下使用 xpath 取得股票資訊
+            Name = HttpUtility.HtmlDecode(a.SelectSingleNode("./div/div[1]/div[2]/div/div[1]").InnerText
+                .Trim()), //將 html entity 轉換成字串
+            Symbol = a.SelectSingleNode("./div/div[1]/div[2]/div/div[2]").InnerText.Trim(),
+            Price = a.SelectSingleNode("./div/div[2]").InnerText.Trim(),
+            PriceChange = a.SelectSingleNode("./div/div[3]").InnerText.Trim(),
+            Change = a.SelectSingleNode("./div/div[4]").InnerText.Trim(),
+            Open = a.SelectSingleNode("./div/div[5]").InnerText.Trim(),
+            LastClose = a.SelectSingleNode("./div/div[6]").InnerText.Trim(),
+            High = a.SelectSingleNode("./div/div[7]").InnerText.Trim(),
+            Low = a.SelectSingleNode("./div/div[8]").InnerText.Trim(),
+            Turnover = a.SelectSingleNode("./div/div[9]").InnerText.Trim(),
+            UpDown = a.SelectSingleNode("./div/div[3]/span").Attributes["class"].Value
+            //UpDownCheck(a.SelectSingleNode("./div/div[3]/span").Attributes["class"].Value) //處理上漲或下跌的顯示
+        });
+        
+        if (ShowDebug)
+        {
+            foreach (var stock in stocks)
+            {
+                Console.WriteLine(
+                    $"股票名稱: {stock.Name,-12}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price,-5}\t 漲跌: {stock.UpDown} {stock.PriceChange,-8}\t 漲跌幅: {stock.UpDown} {stock.Change,-8}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
+            }
+        }
+
+        //Task.CompletedTask.Wait();
+        return Task.CompletedTask;
+
+        IEnumerable<HtmlNode> HtmlAgilityPackCssSelectorsNetCore(HtmlDocument doc)
+        {
+            //使用 css selector 取得所有 etf 股票的 html node
+            //return HtmlAgilityPack.CssSelectors.NetCore.HapCssExtensionMethods.QuerySelectorAll(doc, "li.List(n)");
+            return doc.QuerySelectorAll("li.List(n)");
+            //return htmlDocument.QuerySelectorAll("li.List(n)");
+        }
+
+        IEnumerable<HtmlNode> FizzlerSystemsHtmlAgilityPack(HtmlDocument doc)
+        {
+            //使用 css selector 取得所有 etf 股票的 html node
+            return Fizzler.Systems.HtmlAgilityPack.HtmlNodeSelection.QuerySelectorAll(doc.DocumentNode,"li[class='List(n)']");
+            //return Fizzler.Systems.HtmlAgilityPack.HtmlNodeSelection.QuerySelectorAll(htmlDocument.DocumentNode,"li[class='List(n)']");
+        }
+    }
+    
+    #region -HtmlAgilityPack-
+    // [Benchmark]
+    // [Arguments("HtmlAgilityPackCssSelectorsNetCore")]
+    // [Arguments("FizzlerSystemsHtmlAgilityPack")]
+    // public Task HtmlAgilityPack(string haPtype)
+    // {
+    //     // // 定義一個委派變數
+    //     // HapMethod? methodToExecute = null;
+    //     //
+    //     // // 根據傳入的值指派不同的方法給委派變數
+    //     // if (haPtype == "HtmlAgilityPack_CssSelectors_NetCore")
+    //     // {
+    //     //     methodToExecute = HtmlAgilityPackCssSelectorsNetCore;
+    //     // }
+    //     // else if (haPtype == "Fizzler_Systems_HtmlAgilityPack")
+    //     // {
+    //     //     methodToExecute = FizzlerSystemsHtmlAgilityPack;
+    //     // }
+    //     // var nodes = methodToExecute?.Invoke(html);
+    //
+    //
+    //     // var web = new HtmlWeb();
+    //     // // 以 yahoo 股票並選擇 ETF 為例
+    //     // var html = web.Load(TargetUrl);
+    //     
+    //     //var html = htmlAgilityPackHtml;
+    //     
+    //     var web = new HtmlWeb();
+    //     var html =  web.Load(htmlDocument);
+    //     
+    //     var nodes = Enumerable.Empty<HtmlNode>();
+    //
+    //     //使用 HtmlAgilityPack 取得 html node
+    //     //var nodes = HtmlAgilityPack_CssSelectors_NetCore(html);
+    //     //使用 Fizzler 取得 html node
+    //     //var nodes = Fizzler_Systems_HtmlAgilityPack(html);
+    //     if (haPtype == "HtmlAgilityPackCssSelectorsNetCore")
+    //     {
+    //         nodes = HtmlAgilityPackCssSelectorsNetCore(html);
+    //     }
+    //     else if (haPtype == "FizzlerSystemsHtmlAgilityPack")
+    //     {
+    //         nodes = FizzlerSystemsHtmlAgilityPack(html);
+    //     }
+    //
+    //     //將 html node 轉換成 Stock 物件
+    //     var stocks = nodes!.Select(a => new Stock
+    //     {
+    //         //以下使用 xpath 取得股票資訊
+    //         Name = HttpUtility.HtmlDecode(a.SelectSingleNode("./div/div[1]/div[2]/div/div[1]").InnerText
+    //             .Trim()), //將 html entity 轉換成字串
+    //         Symbol = a.SelectSingleNode("./div/div[1]/div[2]/div/div[2]").InnerText.Trim(),
+    //         Price = a.SelectSingleNode("./div/div[2]").InnerText.Trim(),
+    //         PriceChange = a.SelectSingleNode("./div/div[3]").InnerText.Trim(),
+    //         Change = a.SelectSingleNode("./div/div[4]").InnerText.Trim(),
+    //         Open = a.SelectSingleNode("./div/div[5]").InnerText.Trim(),
+    //         LastClose = a.SelectSingleNode("./div/div[6]").InnerText.Trim(),
+    //         High = a.SelectSingleNode("./div/div[7]").InnerText.Trim(),
+    //         Low = a.SelectSingleNode("./div/div[8]").InnerText.Trim(),
+    //         Turnover = a.SelectSingleNode("./div/div[9]").InnerText.Trim(),
+    //         UpDown = a.SelectSingleNode("./div/div[3]/span").Attributes["class"].Value
+    //         //UpDownCheck(a.SelectSingleNode("./div/div[3]/span").Attributes["class"].Value) //處理上漲或下跌的顯示
+    //     });
+    // if (ShowDebug)
+    // {
+    //     foreach (var stock in stocks)
+    //     {
+    //         Console.WriteLine(
+    //             $"股票名稱: {stock.Name,-12}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price,-5}\t 漲跌: {stock.UpDown} {stock.PriceChange,-8}\t 漲跌幅: {stock.UpDown} {stock.Change,-8}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
+    //     }
+    // }
+    //
+    //     //Task.CompletedTask.Wait();
+    //     return Task.CompletedTask;
+    //
+    //     IEnumerable<HtmlNode> HtmlAgilityPackCssSelectorsNetCore(HtmlDocument doc)
+    //     {
+    //         //使用 css selector 取得所有 etf 股票的 html node
+    //         //return HtmlAgilityPack.CssSelectors.NetCore.HapCssExtensionMethods.QuerySelectorAll(doc, "li.List(n)");
+    //         return doc.QuerySelectorAll("li.List(n)");
+    //         //return htmlDocument.QuerySelectorAll("li.List(n)");
+    //     }
+    //
+    //     IEnumerable<HtmlNode> FizzlerSystemsHtmlAgilityPack(HtmlDocument doc)
+    //     {
+    //         //使用 css selector 取得所有 etf 股票的 html node
+    //         return Fizzler.Systems.HtmlAgilityPack.HtmlNodeSelection.QuerySelectorAll(doc.DocumentNode,"li[class='List(n)']");
+    //         //return Fizzler.Systems.HtmlAgilityPack.HtmlNodeSelection.QuerySelectorAll(htmlDocument.DocumentNode,"li[class='List(n)']");
+    //     }
+    // }
+    #endregion
 
 
     [Benchmark]
     public Task ScrapySharp()
     {
+        HtmlNode html = scrapySharpHtml;
+        
         // // 建立瀏覽器物件
         // ScrapingBrowser mybrowser = new ScrapingBrowser();
         //
         // // 以 yahoo 股票並選擇 ETF 為例
         // WebPage webpage =
         //     mybrowser.NavigateToPage(new Uri(TargetUrl));
-        var html = scrapySharpHtml;//webpage.Html;
+       
+        //var html = scrapySharpHtml;//webpage.Html;
 
+        // 建立瀏覽器物件
+        
+        if (UseHtmlString)
+        {
+            var doc = new HtmlDocument();
+            doc.LoadHtml(htmlDocument);
+            html = doc.DocumentNode;
+        }
+        else
+        {
+            //WebPage webpage = scrapySharpbrowser.NavigateToPage(new Uri(TargetUrl));
+            html = scrapySharpbrowser.NavigateToPage(new Uri(TargetUrl)).Html;
+        }
+
+        //
+        
         //使用 css selector 取得所有 etf 股票的 html node
         var nodes = html.CssSelect("li[class='List(n)']");
 
@@ -232,11 +486,14 @@ public class Crawler
             //UpDownCheck(a.SelectSingleNode("./div/div[3]/span").Attributes["class"].Value) //處理上漲或下跌的顯示
         });
 
-        // foreach (var stock in stocks)
-        // {
-        //     Console.WriteLine(
-        //         $"股票名稱: {stock.Name.PadRight(12)}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price.PadRight(5)}\t 漲跌: {stock.UpDown} {stock.PriceChange.PadRight(8)}\t 漲跌幅: {stock.UpDown} {stock.Change.PadRight(8)}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
-        // }
+        if (ShowDebug)
+        {
+            foreach (var stock in stocks)
+            {
+                Console.WriteLine(
+                    $"股票名稱: {stock.Name,-12}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price,-5}\t 漲跌: {stock.UpDown} {stock.PriceChange,-8}\t 漲跌幅: {stock.UpDown} {stock.Change,-8}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
+            }
+        }
 
         return Task.CompletedTask;
     }
@@ -244,9 +501,22 @@ public class Crawler
     [Benchmark]
     public async Task AngleSharp()
     {
+        IDocument document = angleSharpDocument;
         // var config = Configuration.Default.WithDefaultLoader();
         // var document = await BrowsingContext.New(config).OpenAsync(TargetUrl);
-        var document = angleSharpDocument;
+        
+        //var document = angleSharpDocument;
+        
+        var config = Configuration.Default.WithDefaultLoader();
+        if (UseHtmlString)
+        {
+            document = await BrowsingContext.New(config).OpenAsync(req => req.Content(htmlDocument));
+        }
+        else
+        {
+            document = await BrowsingContext.New(config).OpenAsync(TargetUrl);
+        }
+
 //使用 css selector 取得所有 etf 股票的 html node
         var nodes = //document.QuerySelectorAll("li[class='List(n)']");
             document.All.Where(a => a is { LocalName: "li", ClassName: "List(n)" });
@@ -274,11 +544,14 @@ public class Crawler
             //UpDownCheck(((IElement)a.SelectSingleNode("./div/div[3]/span")).GetAttribute("class")) //處理上漲或下跌的顯示
         });
 
-        // foreach (var stock in stocks)
-        // {
-        //     Console.WriteLine(
-        //         $"股票名稱: {stock.Name.PadRight(12)}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price.PadRight(5)}\t 漲跌: {stock.UpDown} {stock.PriceChange.PadRight(8)}\t 漲跌幅: {stock.UpDown} {stock.Change.PadRight(8)}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
-        // }
+        if (ShowDebug)
+        {
+            foreach (var stock in stocks)
+            {
+                Console.WriteLine(
+                    $"股票名稱: {stock.Name,-12}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price,-5}\t 漲跌: {stock.UpDown} {stock.PriceChange,-8}\t 漲跌幅: {stock.UpDown} {stock.Change,-8}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
+            }
+        }
     }
 
     [Benchmark]
@@ -297,7 +570,28 @@ public class Crawler
         // var page = await browser.NewPageAsync();
         // await page.GoToAsync(TargetUrl, new NavigationOptions() { Timeout = 0 });
 
+        //var page = puppeteerSharpPage;
+        
+        
+        //使用 headless 模式 (不顯示瀏覽器) 啟動瀏覽器
+        // var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+        // {
+        //     Headless = true,
+        //     Timeout = 0,
+        //     Args = new[] { "--disable-features=site-per-process", "--no-sandbox" }
+        // });
+        // TaskHelper.DefaultTimeout = 5_000;
         var page = puppeteerSharpPage;
+        
+        if (UseHtmlString)
+        {
+            await page.SetContentAsync(htmlDocument, new NavigationOptions() { Timeout = 300000 });
+        }
+        else
+        {
+            await page.GoToAsync(TargetUrl, new NavigationOptions() { Timeout = 0 });
+        }
+
         //使用 css 選擇器取得所有股票眕內容，再透過 XPath 取得股票詳細資訊
         var jsSelectAllStocks = @"Array.from(document.querySelectorAll('li[class=""List(n)""]')).map(a => {
     return {
@@ -318,11 +612,14 @@ public class Crawler
         var matchHtml = await page.EvaluateExpressionAsync<JsonDocument[]>(jsSelectAllStocks);
         var stocks = matchHtml.Select(a => a.Deserialize<Stock>());
 
-        // foreach (var stock in stocks)
-        // {
-        //     Console.WriteLine(
-        //         $"股票名稱: {stock!.Name,-12}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price.PadRight(5)}\t 漲跌: {stock.UpDown} {stock.PriceChange.PadRight(8)}\t 漲跌幅: {stock.UpDown} {stock.Change.PadRight(8)}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
-        // }
+        if (ShowDebug)
+        {
+            foreach (var stock in stocks)
+            {
+                Console.WriteLine(
+                    $"股票名稱: {stock.Name,-12}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price,-5}\t 漲跌: {stock.UpDown} {stock.PriceChange,-8}\t 漲跌幅: {stock.UpDown} {stock.Change,-8}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
+            }
+        }
     }
 
     [Benchmark]
@@ -341,7 +638,55 @@ public class Crawler
         // var browser = new ChromeDriver(options);
         //browser.Navigate().GoToUrl(TargetUrl);
 
-        var browser = seleniumDriver;
+//        var browser = seleniumDriver;
+
+
+        // var options = new ChromeOptions();
+        // //使用 headless 模式
+        // options.AddArguments(new List<string>()
+        // {
+        //     "headless",
+        //     "disable-gpu",
+        //     "--remote-debugging-pipe"
+        // });
+        //
+        var browser = seleniumDriver;//
+        // var browser= new ChromeDriver(options);
+        
+        if (UseHtmlString)
+        {
+            // 將 HTML 字串寫入臨時檔案
+            string tempFilePath = Path.Combine(Path.GetTempPath(), "tempPage.html");
+            File.WriteAllText(tempFilePath, htmlDocument);
+            browser.Navigate().GoToUrl("file:///" + tempFilePath);
+        }
+        else
+        {
+            browser.Navigate().GoToUrl(TargetUrl);
+        }
+
+        //options.PageLoadStrategy = PageLoadStrategy.Eager;
+
+        //options.PageLoadTimeout = TimeSpan.MaxValue;
+        //使用 ChromeDriver
+        //seleniumDriver.Navigate().GoToUrl(TargetUrl);
+        //browser.Navigate().GoToUrl("data:text/html;charset=utf-8," + htmlDocument);
+        //browser.Navigate().GoToUrl($"data:text/html;charset=utf-8,{htmlDocument}");
+
+        // // 先導航到一個空白頁面
+        // browser.Navigate().GoToUrl("about:blank");
+        // // 使用 ExecuteScript 動態注入 HTML
+        // IJavaScriptExecutor js = (IJavaScriptExecutor)browser;
+        // js.ExecuteScript($"document.body.innerHTML = '{htmlDocument}';");
+        
+        // browser.Navigate().GoToUrl("about:blank");
+        // // 獲取 body 元素
+        // IWebElement body = browser.FindElement(By.TagName("body"));
+        // // 使用 JavaScript 將 HTML 插入 body
+        // IJavaScriptExecutor executor = (IJavaScriptExecutor)browser;
+        // executor.ExecuteScript($"arguments[0].innerHTML = '{htmlDocument}';", body);
+       
+
         //使用 css selector 找到所有股票資訊
         var nodes = browser.FindElements(By.CssSelector("li[class='List(n)']"));
 
@@ -361,12 +706,15 @@ public class Crawler
             //UpDown = UpDownCheck(a.FindElement(By.XPath("./div/div[3]/span")).GetAttribute("class"))
             UpDown = a.FindElement(By.XPath("./div/div[3]/span")).GetAttribute("class")
         });
-
-        // foreach (var stock in stocks)
-        // {
-        //     Console.WriteLine(
-        //         $"股票名稱: {stock.Name.PadRight(12)}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price.PadRight(5)}\t 漲跌: {stock.UpDown} {stock.PriceChange.PadRight(8)}\t 漲跌幅: {stock.UpDown} {stock.Change.PadRight(8)}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
-        // }
+        //Console.WriteLine(nodes.Count);
+        if (ShowDebug)
+        {
+            foreach (var stock in stocks)
+            {
+                Console.WriteLine(
+                    $"股票名稱: {stock.Name,-12}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price,-5}\t 漲跌: {stock.UpDown} {stock.PriceChange,-8}\t 漲跌幅: {stock.UpDown} {stock.Change,-8}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
+            }
+        }
 
         return Task.CompletedTask;
     }
@@ -386,8 +734,31 @@ public class Crawler
         // await using var browser = await playwright.Chromium.LaunchAsync();
         // var page = await browser.NewPageAsync();
         // await page.GotoAsync(TargetUrl,new PageGotoOptions(){Timeout = 0});
+
+        //var page = playwrightPage;
         
+        // Install Playwright
+        // var exitCode = Microsoft.Playwright.Program.Main(new[] { "install" });
+        // if (exitCode != 0)
+        // {
+        //     throw new Exception($"Playwright exited with code {exitCode}");
+        // }
+        //
+        // // Run the Playwright test
+        // var playwright = await Microsoft.Playwright.Playwright.CreateAsync();
+        // var playwrightBrowser = await playwright.Chromium.LaunchAsync();
+        // var page = await playwrightBrowser.NewPageAsync();
         var page = playwrightPage;
+        if (UseHtmlString)
+        {
+            await page.SetContentAsync(htmlDocument, new PageSetContentOptions() {Timeout = 300000});
+
+        }
+        else
+        {
+            await page.GotoAsync(TargetUrl,new PageGotoOptions(){Timeout = 0});
+        }
+
 
         // 使用 css selector 找到所有股票資訊
         var nodes = await page.QuerySelectorAllAsync("li[class='List(n)']");
@@ -432,11 +803,14 @@ public class Crawler
             //UpDownCheck((await (await a.EvaluateHandleAsync("el => document.evaluate('./div/div[3]/span',el,null,XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue")).AsElement().GetAttributeAsync("class")).Trim()),
         }).Select(b => b.GetAwaiter().GetResult());
 
-        // foreach (var stock in stocks)
-        // {
-        //     Console.WriteLine(
-        //         $"股票名稱: {stock.Name.PadRight(12)}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price.PadRight(5)}\t 漲跌: {stock.UpDown} {stock.PriceChange.PadRight(8)}\t 漲跌幅: {stock.UpDown} {stock.Change.PadRight(8)}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
-        // }
+        if (ShowDebug)
+        {
+            foreach (var stock in stocks)
+            {
+                Console.WriteLine(
+                    $"股票名稱: {stock.Name,-12}\t 股票代號: {stock.Symbol}\t 股價: {stock.Price,-5}\t 漲跌: {stock.UpDown} {stock.PriceChange,-8}\t 漲跌幅: {stock.UpDown} {stock.Change,-8}\t 開盤: {stock.Open}\t 昨收: {stock.LastClose}\t 最高: {stock.High}\t 最低: {stock.Low}\t 成交量(張): {stock.Turnover}");
+            }
+        }
     }
 }
 
